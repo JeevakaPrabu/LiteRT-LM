@@ -425,7 +425,56 @@ More detailed description about each of the flags are in the following table:
 | `async`                        | Run the LLM          | `true`              |
 :                                : execution            :                     :
 :                                : asynchronously.      :                     :
-| `report_peak_memory_footprint` | Report peak memory   | `false`             |
-:                                : footprint.           :                     :
+| `report_peak_memory_footprint` | Report the peak      | `false`             |
+:                                : resident, private    :                     :
+:                                : and accelerator      :                     :
+:                                : memory of the run    :                     :
+:                                : (see below).         :                     :
 
 </details>
+
+### Peak memory <span id="peak-memory"></span>
+
+With `report_peak_memory_footprint`, a background thread samples the memory of
+the process every 50 ms and reports the peaks:
+
+| Peak               | Meaning                                                 |
+| :----------------- | :------------------------------------------------------ |
+| Resident memory    | Physical memory in use: the resident set size (RSS), or the working set on Windows. |
+| Private memory     | Private memory footprint. Its definition differs by OS, so do not compare it across them: the commit charge (`PrivateUsage`) on Windows, RSS plus swap on Linux and Android, and the physical footprint on Apple platforms. |
+| Accelerator memory | GPU / NPU memory of the process, with a per-category breakdown. Only reported where the platform can measure it (currently Android); absent elsewhere. |
+
+Notes:
+
+-   `litert_lm_advanced_main` samples one iteration at a time, after the engine
+    is created, and logs the median over all iterations. On Linux the resident
+    and private figures are the high-water marks of the process, so they also
+    include model loading.
+-   `embedding_litert_lm_main` starts sampling before the model is loaded. It
+    logs the private memory as `Peak system ram usage`.
+
+The same numbers are available from the other APIs:
+
+```
+# Python CLI. Reports the maximum over the measured iterations (not the
+# warmup) and `N/A` for a peak that is not measurable. Not supported with
+# --android.
+litert-lm benchmark my-model --report-peak-memory-footprint
+```
+
+```python
+# Python API. A peak that is not measurable is None.
+with litert_lm.Benchmark(
+    model_path,
+    backend=litert_lm.Backend.CPU(),
+    report_peak_memory_footprint=True,
+) as benchmark:
+  info = benchmark.run()
+  print(info.peak_mem_mb, info.peak_private_mb, info.peak_accelerator_mb)
+```
+
+The C API exposes them as `litert_lm_experimental_memory_monitor_*` in
+[`c/experimental.h`](../../c/experimental.h): create a monitor, start it, run
+the workload, stop it and read the peaks. A peak that is not measurable returns
+`kLiteRtLmStatusNotFound`. The Python API needs a `litert-lm` library built with
+these functions.

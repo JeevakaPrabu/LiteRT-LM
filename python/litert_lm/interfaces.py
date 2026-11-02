@@ -862,6 +862,12 @@ class BenchmarkInfo:
       last_decode_token_count: The number of tokens in the last decode.
       last_decode_tokens_per_second: The number of tokens processed per second
         in the last decode.
+      peak_mem_mb: The peak resident memory of the process in MB, or None if
+        not reported.
+      peak_private_mb: The peak private memory footprint of the process in MB,
+        or None if not reported.
+      peak_accelerator_mb: The peak accelerator memory of the process in MB, or
+        None if not reported or unsupported on the platform.
   """
 
   init_time_in_second: float
@@ -870,6 +876,9 @@ class BenchmarkInfo:
   last_prefill_tokens_per_second: float
   last_decode_token_count: int
   last_decode_tokens_per_second: float
+  peak_mem_mb: float | None = None
+  peak_private_mb: float | None = None
+  peak_accelerator_mb: float | None = None
 
 
 def create_benchmark_info(lib: Any, info_ptr: Any) -> BenchmarkInfo:
@@ -976,6 +985,11 @@ class AbstractBenchmark(abc.ABC):
         instant rewinding at higher memory cost.
       enable_ynnpack: Whether YNNPACK should delegate supported operations
         before XNNPACK. If None, use the native engine's default.
+      report_peak_memory_footprint: Whether to monitor the process memory
+        during each run and report the peaks in the `BenchmarkInfo`. Sampling
+        starts after the engine is created; on Linux the peaks are still
+        process high-water marks, so they include model loading. Requires a
+        litert-lm library built with the memory monitor C API.
   """
 
   model_path: str
@@ -990,6 +1004,7 @@ class AbstractBenchmark(abc.ABC):
   activation_data_type: ActivationDataType | None = None
   use_ringbuffers_local_attention: bool | None = None
   enable_ynnpack: bool | None = None
+  report_peak_memory_footprint: bool = False
 
   def __enter__(self) -> AbstractBenchmark:
     """Initializes the benchmark resources."""

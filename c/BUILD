@@ -106,6 +106,8 @@ MODEL_INFO_DEPS = [
 
 EXPERIMENTAL_DEPS = [
     ":experimental_internal",
+    "//runtime/util/memory_profiling:accelerator_memory_monitor",
+    "@litert//tflite/profiling:memory_usage_monitor",
 ]
 
 ENGINE_COMMON_DEPS = (
@@ -480,6 +482,7 @@ cc_test(
         "@com_google_absl//absl/status:status_matchers",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
         "//runtime/conversation",
         "//runtime/conversation:io_types",
         "//runtime/conversation:thinking_config",
