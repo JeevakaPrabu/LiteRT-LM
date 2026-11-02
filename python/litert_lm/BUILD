@@ -304,6 +304,18 @@ copy_file(
 )
 
 copy_file(
+    name = "copy_webgpu_dawn_dll",
+    src = "//prebuilt/windows_x86_64:webgpu_dawn.dll",
+    out = "webgpu_dawn.dll",
+)
+
+copy_file(
+    name = "copy_gemma_model_constraint_provider_dll",
+    src = "//prebuilt/windows_x86_64:libGemmaModelConstraintProvider.dll",
+    out = "libGemmaModelConstraintProvider.dll",
+)
+
+copy_file(
     name = "copy_openvino_dispatch_dll",
     src = "@litert//litert/vendors/intel_openvino/dispatch:LiteRtDispatch",
     out = "vendors/intel_openvino/dispatch/LiteRtDispatch.dll",
@@ -381,6 +393,8 @@ filegroup(
             ":copy_prebuilt_litert_lm_dll",
             ":copy_dxcompiler_dll",
             ":copy_dxil_dll",
+            ":copy_webgpu_dawn_dll",
+            ":copy_gemma_model_constraint_provider_dll",
             ":copy_openvino_dispatch_dll",
         ],
         ":wheel_platform_linux_x86_64": [":copy_litert_lm_so"],
