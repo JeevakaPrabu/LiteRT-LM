@@ -85,6 +85,27 @@ target_link_libraries(runtime_util_memory_profiling_accelerator_memory_monitor
 )
 
 # ==============================================================================
+# Process Memory Monitor
+# ==============================================================================
+add_litertlm_library(runtime_util_memory_profiling_process_memory_monitor STATIC
+  process_memory_monitor.cc
+)
+add_library(LiteRTLM::Runtime::Util::MemoryProfiling::ProcessMemoryMonitor
+  ALIAS runtime_util_memory_profiling_process_memory_monitor)
+
+target_include_directories(runtime_util_memory_profiling_process_memory_monitor
+  PUBLIC
+    ${LITERTLM_GENERATED_SRC_DIR}
+    ${LITERTLM_INCLUDE_PATHS}
+)
+
+target_link_libraries(runtime_util_memory_profiling_process_memory_monitor
+  PUBLIC
+    LiteRTLM::Runtime::Util::MemoryProfiling::AcceleratorMemoryMonitor
+    LITERTLM_DEPS
+)
+
+# ==============================================================================
 # Memory Snapshot
 # ==============================================================================
 add_litertlm_library(runtime_util_memory_profiling_memory_snapshot STATIC
@@ -115,5 +136,6 @@ add_library(LiteRTLM::Runtime::Util::MemoryProfiling ALIAS runtime_util_memory_p
 target_link_libraries(runtime_util_memory_profiling_libs INTERFACE
   LiteRTLM::Runtime::Util::MemoryProfiling::HostMemory
   LiteRTLM::Runtime::Util::MemoryProfiling::AcceleratorMemoryMonitor
+  LiteRTLM::Runtime::Util::MemoryProfiling::ProcessMemoryMonitor
   LiteRTLM::Runtime::Util::MemoryProfiling::MemorySnapshot
 )

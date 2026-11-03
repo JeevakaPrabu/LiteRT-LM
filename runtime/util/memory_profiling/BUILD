@@ -20,6 +20,9 @@
 #   accelerator_memory_monitor  the accelerator side: types, the per-OS
 #                               platform contract, formatting, and the
 #                               accelerator-only AcceleratorMemoryMonitor
+#   process_memory_monitor      both sides' peaks, sampled in the background;
+#                               what every report_peak_memory_footprint
+#                               implementation uses
 #
 # Both sides follow the same layout: a platform-neutral header declares a
 # platform contract, and each operating system contributes one <side>_<os>.cc
@@ -209,6 +212,30 @@ cc_test(
     deps = [
         ":accelerator_memory_monitor",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+# Host and accelerator peak tracking behind every report_peak_memory_footprint
+# implementation, so that they report the same numbers.
+cc_library(
+    name = "process_memory_monitor",
+    srcs = ["process_memory_monitor.cc"],
+    hdrs = ["process_memory_monitor.h"],
+    deps = [
+        ":accelerator_memory_monitor",
+        "@com_google_absl//absl/time",
+        "@litert//tflite/profiling:memory_usage_monitor",
+    ],
+)
+
+cc_test(
+    name = "process_memory_monitor_test",
+    srcs = ["process_memory_monitor_test.cc"],
+    deps = [
+        ":accelerator_memory_monitor",
+        ":process_memory_monitor",
+        "@com_google_googletest//:gtest_main",
+        "@litert//tflite/profiling:memory_info",
     ],
 )
 

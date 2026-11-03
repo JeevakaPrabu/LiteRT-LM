@@ -24,6 +24,7 @@
 #include "runtime/engine/litert_lm_lib.h"
 
 #include "runtime/util/memory_profiling/accelerator_memory_monitor.h"
+#include "runtime/util/memory_profiling/process_memory_monitor.h"
 
 #if defined(_WIN32)
 #include <io.h>
@@ -83,7 +84,6 @@
 #include "runtime/util/status_macros.h"  // NOLINT
 #include "re2/re2.h"  // from @com_googlesource_code_re2
 #include "tflite/profiling/memory_info.h"  // from @litert
-#include "tflite/profiling/memory_usage_monitor.h"  // from @litert
 
 namespace litert {
 namespace lm {
@@ -100,8 +100,6 @@ using ::litert::lm::Message;
 using ::litert::lm::ModelAssets;
 using ::nlohmann::json;
 
-// Memory check interval in milliseconds.
-constexpr int kMemoryCheckIntervalMs = 50;
 // Timeout duration for waiting until the engine is done with all the tasks.
 const absl::Duration kWaitUntilDoneTimeout = absl::Minutes(10);
 
@@ -1270,17 +1268,10 @@ absl::Status RunLiteRtLm(const LiteRtLmSettings& settings,
   iteration_metrics.reserve(settings.num_iterations);
 
   for (int i = 0; i < settings.num_iterations; ++i) {
-    std::unique_ptr<tflite::profiling::memory::MemoryUsageMonitor> mem_monitor;
-    std::unique_ptr<AcceleratorMemoryMonitor> accelerator_mem_monitor;
+    std::unique_ptr<ProcessMemoryMonitor> memory_monitor;
     if (settings.report_peak_memory_footprint) {
-      mem_monitor =
-          std::make_unique<tflite::profiling::memory::MemoryUsageMonitor>(
-              kMemoryCheckIntervalMs);
-      mem_monitor->Start();
-      // No-op on platforms where accelerator memory tracking is unsupported.
-      accelerator_mem_monitor = std::make_unique<AcceleratorMemoryMonitor>(
-          absl::Milliseconds(kMemoryCheckIntervalMs));
-      accelerator_mem_monitor->Start();
+      memory_monitor = std::make_unique<ProcessMemoryMonitor>();
+      memory_monitor->Start();
     }
 
     // Session and Conversation are mutually exclusive. Only when
@@ -1355,20 +1346,14 @@ absl::Status RunLiteRtLm(const LiteRtLmSettings& settings,
     session.reset();
 
     if (settings.report_peak_memory_footprint) {
-      float peak_mem_mb = 0.0f;
-      float peak_private_mb = 0.0f;
-      if (mem_monitor != nullptr) {
-        mem_monitor->Stop();
-        peak_mem_mb = mem_monitor->GetPeakMemUsageInMB();
-        peak_private_mb = mem_monitor->GetPeakPrivateFootprintInMB();
-        metric.peak_mem_mb = peak_mem_mb;
-        metric.peak_private_mb = peak_private_mb;
-      }
-      std::optional<AcceleratorMemoryUsage> peak_accelerator;
-      if (accelerator_mem_monitor != nullptr) {
-        accelerator_mem_monitor->Stop();
-        peak_accelerator = accelerator_mem_monitor->GetPeakUsage();
-      }
+      memory_monitor->Stop();
+      const ProcessMemoryMonitor::Peaks peaks = memory_monitor->GetPeaks();
+      const float peak_mem_mb = peaks.resident_mb.value_or(0.0f);
+      const float peak_private_mb = peaks.private_mb.value_or(0.0f);
+      metric.peak_mem_mb = peak_mem_mb;
+      metric.peak_private_mb = peak_private_mb;
+      const std::optional<AcceleratorMemoryUsage>& peak_accelerator =
+          peaks.accelerator;
       if (peak_accelerator.has_value()) {
         metric.peak_accelerator_mb =
             AcceleratorMemoryBytesToMb(peak_accelerator->total_bytes);

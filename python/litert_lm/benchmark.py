@@ -27,7 +27,8 @@ from .utils import create_c_speculative_decoding_config
 from .utils import merge_speculative_decoding_config
 from .utils import warn_enable_speculative_decoding_deprecated
 
-# Same sampling interval as litert_lm_advanced_main.
+# Same as kDefaultMemorySamplingIntervalMs, the interval of the native
+# benchmarks.
 _MEMORY_CHECK_INTERVAL_MS = 50
 
 
