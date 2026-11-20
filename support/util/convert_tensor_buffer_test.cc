@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 #include "absl/types/span.h"  // from @com_google_absl
 #include "litert/cc/litert_common.h"  // from @litert
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "litert/cc/litert_layout.h"  // from @litert
 #include "litert/cc/litert_tensor_buffer.h"  // from @litert
 #include "litert/cc/litert_tensor_buffer_types.h"  // from @litert
@@ -77,6 +78,24 @@ TEST(ConvertTensorBufferTest, CopyToTensorBuffer_Success) {
   const auto span = absl::MakeConstSpan(
       static_cast<int8_t*>(lock_and_addr.second), buffer_size);
   EXPECT_THAT(span, ElementsAre(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+}
+
+TEST(ConvertTensorBufferTest, CopyToTensorBuffer_HostMemoryInEnvironment) {
+  LITERT_ASSERT_OK_AND_ASSIGN(auto env, ::litert::Environment::Create({}));
+  std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
+  LITERT_ASSERT_OK_AND_ASSIGN(
+      auto tensor_buffer,
+      CopyToTensorBuffer<int32_t>(data, {2, 3},
+                                  ::litert::TensorBufferType::kHostMemory,
+                                  &env));
+  EXPECT_THAT(tensor_buffer.TensorType(),
+              IsOkAndHolds(LayoutDimensionsAre(Dimensions({2, 3}))));
+  EXPECT_THAT(tensor_buffer.BufferType(),
+              IsOkAndHolds(::litert::TensorBufferType::kHostMemory));
+
+  std::vector<int32_t> read_data(6);
+  LITERT_ASSERT_OK(tensor_buffer.Read<int32_t>(absl::MakeSpan(read_data)));
+  EXPECT_THAT(read_data, ElementsAre(1, 2, 3, 4, 5, 6));
 }
 
 TEST(ConvertTensorBufferTest, CopyToTensorBuffer_Success_MultipleBytes) {

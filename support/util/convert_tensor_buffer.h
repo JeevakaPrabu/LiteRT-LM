@@ -183,13 +183,15 @@ template <typename T>
 }
 
 // Copies an absl::Span<const T> to a ::litert::TensorBuffer with the given
-// dimensions.
+// dimensions. If `env` is not null, the buffer is created in it, also for host
+// memory; otherwise a host memory buffer is created in LiteRT's deprecated
+// default environment.
 template <typename T>
 ::litert::Expected<::litert::TensorBuffer> CopyToTensorBuffer(
     absl::Span<const T> data, ::litert::Dimensions&& dimensions,
     ::litert::TensorBufferType buffer_type =
         ::litert::TensorBufferType::kHostMemory,
-    ::litert::Environment* env = nullptr) {
+    const ::litert::Environment* env = nullptr) {
   if (buffer_type != ::litert::TensorBufferType::kHostMemory &&
       env == nullptr) {
     return ::litert::Unexpected(
@@ -197,7 +199,7 @@ template <typename T>
         "Environment is required for non-host memory buffer.");
   }
   ::litert::Expected<::litert::TensorBuffer> output_tensor_buffer;
-  if (buffer_type == ::litert::TensorBufferType::kHostMemory) {
+  if (env == nullptr) {
     output_tensor_buffer = ::litert::TensorBuffer::CreateManagedHostMemory(
         ::litert::RankedTensorType(ElementTypeFor<T>::kType,
                                    ::litert::Layout(std::move(dimensions))),
@@ -222,7 +224,7 @@ template <typename TargetType, typename SourceType>
     absl::Span<const SourceType> source, ::litert::Dimensions&& dimensions,
     ::litert::TensorBufferType buffer_type =
         ::litert::TensorBufferType::kHostMemory,
-    ::litert::Environment* env = nullptr) {
+    const ::litert::Environment* env = nullptr) {
   if (buffer_type != ::litert::TensorBufferType::kHostMemory &&
       env == nullptr) {
     return ::litert::Unexpected(
@@ -230,7 +232,7 @@ template <typename TargetType, typename SourceType>
         "Environment is required for non-host memory buffer.");
   }
   ::litert::Expected<::litert::TensorBuffer> tensor_buffer;
-  if (buffer_type == ::litert::TensorBufferType::kHostMemory) {
+  if (env == nullptr) {
     tensor_buffer = ::litert::TensorBuffer::CreateManagedHostMemory(
         ::litert::RankedTensorType(ElementTypeFor<TargetType>::kType,
                                    ::litert::Layout(std::move(dimensions))),

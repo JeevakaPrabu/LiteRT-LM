@@ -27,6 +27,7 @@
 #include "absl/status/statusor.h"  // from @com_google_absl
 #include "absl/strings/string_view.h"  // from @com_google_absl
 #include "absl/types/span.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "litert/cc/litert_layout.h"  // from @litert
 #include "litert/cc/litert_tensor_buffer.h"  // from @litert
 #include "litert/test/matchers.h"  // from @litert
@@ -69,6 +70,20 @@ TEST(TokenizerTest, TextToTensorBuffer) {
   EXPECT_TRUE(copied_data.HasValue());
   EXPECT_THAT((*copied_data)[0],
               ::testing::ElementsAre(90, 547, 58, 735, 210, 466, 2294));
+}
+
+TEST(TokenizerTest, TokenIdsToTensorBufferInEnvironment) {
+  LITERT_ASSERT_OK_AND_ASSIGN(auto env, ::litert::Environment::Create({}));
+  const std::vector<int> ids = {90, 547, 58};
+
+  LITERT_ASSERT_OK_AND_ASSIGN(
+      auto tensor, Tokenizer::TokenIdsToTensorBuffer(ids, &env));
+  LITERT_ASSERT_OK_AND_ASSIGN(auto tensor_type, tensor.TensorType());
+  EXPECT_EQ(tensor_type.Layout().Dimensions(), ::litert::Dimensions({1, 3}));
+
+  auto copied_data = CopyFromTensorBuffer2D<int>(tensor);
+  ASSERT_TRUE(copied_data.HasValue());
+  EXPECT_THAT((*copied_data)[0], ::testing::ElementsAre(90, 547, 58));
 }
 
 TEST(TokenizerTest, TensorBufferToTokenIds) {

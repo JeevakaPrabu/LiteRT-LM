@@ -22,6 +22,7 @@
 #include "absl/status/statusor.h"  // from @com_google_absl
 #include "absl/strings/string_view.h"  // from @com_google_absl
 #include "absl/types/span.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "litert/cc/litert_macros.h"  // from @litert
 #include "litert/cc/litert_tensor_buffer.h"  // from @litert
 #include "support/util/convert_tensor_buffer.h"
@@ -54,12 +55,17 @@ class Tokenizer {
   virtual absl::StatusOr<int> TokenToId(absl::string_view token) = 0;
 
   // Helper function to convert a vector of token ids into a 1D
-  // litert::TensorBuffer of shape [batch_size(==1), num_tokens].
+  // litert::TensorBuffer of shape [batch_size(==1), num_tokens]. The buffer is
+  // created in `env` if it is not null, and in LiteRT's deprecated default
+  // environment otherwise.
   static absl::StatusOr<TensorBuffer> TokenIdsToTensorBuffer(
-      absl::Span<const int> token_ids) {
+      absl::Span<const int> token_ids,
+      const ::litert::Environment* env = nullptr) {
     LITERT_ASSIGN_OR_RETURN(
-        auto tensor, CopyToTensorBuffer<int>(
-                         token_ids, {1, static_cast<int>(token_ids.size())}));
+        auto tensor,
+        CopyToTensorBuffer<int>(token_ids,
+                                {1, static_cast<int>(token_ids.size())},
+                                ::litert::TensorBufferType::kHostMemory, env));
     return tensor;
   }
 
