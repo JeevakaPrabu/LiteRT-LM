@@ -273,9 +273,7 @@ class DecodeOneStep {
         cancelled_(cancelled),
         speculative_decoding_config_(speculative_decoding_config),
         draft_token_ids_(std::move(draft_token_ids)) {
-    if (scores_tensor.has_value()) {
-      scores_tensor_ = std::move(*scores_tensor);
-    }
+    scores_tensor_ = std::move(scores_tensor);
   }
 
  public:
@@ -411,8 +409,8 @@ class DecodeOneStep {
       }
 
       if (sampler_.has_value()) {
-        LITERT_ASSIGN_OR_RETURN(scores_span_,
-                                ReferTensorBufferAsSpan<float>(scores_tensor_));
+        LITERT_ASSIGN_OR_RETURN(
+            scores_span_, ReferTensorBufferAsSpan<float>(*scores_tensor_));
       }
 
       is_first_step_ = false;
@@ -540,7 +538,7 @@ class DecodeOneStep {
       uniforms_.resize(num_output_candidates_);
       DrawUniforms(*sampler_->rng, absl::MakeSpan(uniforms_));
       ABSL_RETURN_IF_ERROR(sampler_->sampler->SampleToIdAndScoreBuffer(
-          output_logits, decoded_ids.value(), &scores_tensor_, uniforms_));
+          output_logits, decoded_ids.value(), &*scores_tensor_, uniforms_));
       if (benchmark_info_.has_value()) {
         ABSL_RETURN_IF_ERROR(benchmark_info_->TimeMarkDelta("sampling"));
       }
@@ -597,8 +595,10 @@ class DecodeOneStep {
   StopTokenStreamFilter stop_token_filter_;
 
   // For external sampling.
-  // Holds the scores for the output candidates. Dim: {num_output_candidates}
-  litert::TensorBuffer scores_tensor_;
+  // Holds the scores for the output candidates. Dim: {num_output_candidates}.
+  // Optional, as a default-constructed TensorBuffer creates LiteRT's default
+  // environment.
+  std::optional<litert::TensorBuffer> scores_tensor_;
   absl::Span<float> scores_span_;
 
   // Stores the incremental delta (newly released text and token IDs) produced
