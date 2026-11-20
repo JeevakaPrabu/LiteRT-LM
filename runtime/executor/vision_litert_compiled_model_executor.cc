@@ -15,6 +15,7 @@
 #include "runtime/executor/vision_litert_compiled_model_executor.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -409,6 +410,7 @@ VisionLiteRtCompiledModelExecutor::VisionSubmodel::Create(
           SetNpuOptions(vision_executor_settings.GetNpuOptions(), options));
       options.SetHardwareAccelerators(litert::HwAccelerators::kNpu |
                                       litert::HwAccelerators::kCpu);
+      RunVendorOptionsParsers(options);
       break;
     }
 #endif  // !defined(LITERT_DISABLE_NPU)

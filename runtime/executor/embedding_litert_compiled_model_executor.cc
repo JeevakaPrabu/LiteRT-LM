@@ -52,7 +52,6 @@
 #include "litert/cc/litert_tensor_buffer.h"  // from @litert
 #include "litert/cc/options/litert_cpu_options.h"  // from @litert
 #include "litert/cc/options/litert_gpu_options.h"  // from @litert
-#include "litert/tools/flags/options_parser_registry.h"  // from @litert
 #include "runtime/executor/executor_stats.h"
 #if !defined(LITERT_DISABLE_NPU)
 #include "litert/cc/options/litert_qualcomm_options.h"  // from @litert
@@ -236,12 +235,7 @@ EmbeddingLiteRtCompiledModelExecutor::CompileTextEncoder(
           SetNpuOptions(executor_settings.GetNpuOptions(), options));
       options.SetHardwareAccelerators(litert::HwAccelerators::kNpu |
                                       litert::HwAccelerators::kCpu);
-      auto parser_status =
-          tools::OptionsParserRegistry::GetInstance().RunAllParsers(options);
-      if (!parser_status) {
-        LITERT_LOG(LITERT_WARNING, "Failed to run options parsers: %s",
-                   parser_status.Error().Message().c_str());
-      }
+      RunVendorOptionsParsers(options);
       break;
     }
 #endif  // !defined(LITERT_DISABLE_NPU)
