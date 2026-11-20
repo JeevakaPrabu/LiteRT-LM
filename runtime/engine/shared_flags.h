@@ -30,6 +30,7 @@
 
 // Common flags for litert_lm_main and litert_lm_example.
 ABSL_DECLARE_FLAG(std::optional<std::string>, vision_backend);
+ABSL_DECLARE_FLAG(bool, warm_up_vision_executor);
 ABSL_DECLARE_FLAG(std::optional<std::string>, audio_backend);
 ABSL_DECLARE_FLAG(std::string, sampler_backend);
 ABSL_DECLARE_FLAG(std::string, expected_output);

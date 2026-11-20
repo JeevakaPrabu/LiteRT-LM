@@ -529,6 +529,27 @@ TEST(LiteRtLmLibTest, CreateEngineSettings_Backends) {
             Backend::GPU);
 }
 
+TEST(LiteRtLmLibTest, CreateEngineSettings_WarmUpVisionExecutor) {
+  const auto model_path =
+      std::filesystem::path(::testing::SrcDir()) /
+      "litert_lm/runtime/testdata/test_lm.litertlm";
+  LiteRtLmSettings settings;
+  settings.model_path = model_path.string();
+  settings.backend = "cpu";
+  settings.vision_backend = "cpu";
+
+  ASSERT_OK_AND_ASSIGN(EngineSettings default_settings,
+                       CreateEngineSettings(settings));
+  ASSERT_TRUE(default_settings.GetVisionExecutorSettings().has_value());
+  EXPECT_FALSE(default_settings.GetVisionExecutorSettings()->GetWarmUpOnInit());
+
+  settings.warm_up_vision_executor = true;
+  ASSERT_OK_AND_ASSIGN(EngineSettings warm_up_settings,
+                       CreateEngineSettings(settings));
+  ASSERT_TRUE(warm_up_settings.GetVisionExecutorSettings().has_value());
+  EXPECT_TRUE(warm_up_settings.GetVisionExecutorSettings()->GetWarmUpOnInit());
+}
+
 TEST(LiteRtLmLibTest, CreateEngineSettings_ActivationDataType) {
   const auto model_path =
       std::filesystem::path(::testing::SrcDir()) /
