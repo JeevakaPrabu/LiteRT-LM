@@ -542,6 +542,15 @@ TEST(LiteRtLmLibTest, CreateEngineSettings_WarmUpVisionExecutor) {
                        CreateEngineSettings(settings));
   ASSERT_TRUE(default_settings.GetVisionExecutorSettings().has_value());
   EXPECT_FALSE(default_settings.GetVisionExecutorSettings()->GetWarmUpOnInit());
+  EXPECT_FALSE(default_settings.GetVisionExecutorSettings()->GetCreateOnInit());
+
+  settings.create_vision_executor_on_init = true;
+  ASSERT_OK_AND_ASSIGN(EngineSettings create_settings,
+                       CreateEngineSettings(settings));
+  ASSERT_TRUE(create_settings.GetVisionExecutorSettings().has_value());
+  EXPECT_TRUE(create_settings.GetVisionExecutorSettings()->GetCreateOnInit());
+  EXPECT_FALSE(create_settings.GetVisionExecutorSettings()->GetWarmUpOnInit());
+  settings.create_vision_executor_on_init = false;
 
   settings.warm_up_vision_executor = true;
   ASSERT_OK_AND_ASSIGN(EngineSettings warm_up_settings,

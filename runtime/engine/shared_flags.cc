@@ -31,11 +31,18 @@ ABSL_FLAG(std::optional<std::string>, vision_backend, std::nullopt,
           "Backend to use for the vision model (cpu, gpu, or npu). If not "
           "specified, the vision backend will be chosen based on the main "
           "backend.");
+ABSL_FLAG(bool, create_vision_executor_on_init, false,
+          "Create the vision executor when the engine is created, in "
+          "parallel with the LLM executor, instead of when the first image is "
+          "processed. The NPU model import is deferred, so this mostly helps "
+          "together with --intel_openvino_configs_map="
+          "LITERT_OV_EAGER_IMPORT=YES. Requires --vision_backend.");
 ABSL_FLAG(bool, warm_up_vision_executor, false,
           "Create the vision executor and run it once when the engine is "
           "created, instead of when the first image is processed. This moves "
           "the one-time cost of the first image (e.g. the NPU model import) "
-          "to the engine creation. Requires --vision_backend.");
+          "to the engine creation, in parallel with the LLM executor. "
+          "Requires --vision_backend.");
 ABSL_FLAG(std::optional<std::string>, audio_backend, std::nullopt,
           "Backend to use for the audio model (cpu or gpu). If not specified, "
           "the audio backend will be chosen based on the main backend.");

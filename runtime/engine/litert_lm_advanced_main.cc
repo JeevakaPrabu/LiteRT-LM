@@ -215,6 +215,7 @@ absl::Status MainHelper(int argc, char** argv) {
            "[--prefill_batch_sizes=<size1>[,<size2>,...]] "
            "[--prefill_chunk_size=<prefill_chunk_size>] "
            "[--vision_backend=<cpu|gpu|npu>] [--audio_backend=<cpu|gpu>] "
+           "[--create_vision_executor_on_init] "
            "[--warm_up_vision_executor] "
            "[--sampler_backend=<cpu|gpu>] [--benchmark] "
            "[--cache_dir=<cache_dir>] [--enable_debugger=<true|false>] "
@@ -274,6 +275,8 @@ absl::Status MainHelper(int argc, char** argv) {
 
   settings.backend = absl::GetFlag(FLAGS_backend);
   settings.vision_backend = absl::GetFlag(FLAGS_vision_backend);
+  settings.create_vision_executor_on_init =
+      absl::GetFlag(FLAGS_create_vision_executor_on_init);
   settings.warm_up_vision_executor =
       absl::GetFlag(FLAGS_warm_up_vision_executor);
   settings.audio_backend = absl::GetFlag(FLAGS_audio_backend);

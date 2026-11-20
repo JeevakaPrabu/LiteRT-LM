@@ -78,7 +78,10 @@ enum class ConvType {
 struct LiteRtLmSettings {
   std::string backend = "gpu";
   std::optional<std::string> vision_backend = std::nullopt;
-  // Creates and runs the vision executor once at the engine creation.
+  // Creates the vision executor at the engine creation, in parallel with the
+  // LLM executor.
+  bool create_vision_executor_on_init = false;
+  // Also runs the vision executor once at the engine creation.
   bool warm_up_vision_executor = false;
   std::optional<std::string> audio_backend = std::nullopt;
   std::string sampler_backend = "";

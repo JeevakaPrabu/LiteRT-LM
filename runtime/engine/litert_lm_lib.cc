@@ -863,6 +863,10 @@ absl::StatusOr<EngineSettings> CreateEngineSettings(
   if (settings.visual_token_budget > 0) {
     engine_settings.SetMaxVisionTokensPerImage(settings.visual_token_budget);
   }
+  if (settings.create_vision_executor_on_init &&
+      engine_settings.GetMutableVisionExecutorSettings().has_value()) {
+    engine_settings.GetMutableVisionExecutorSettings()->SetCreateOnInit(true);
+  }
   if (settings.warm_up_vision_executor &&
       engine_settings.GetMutableVisionExecutorSettings().has_value()) {
     engine_settings.GetMutableVisionExecutorSettings()->SetWarmUpOnInit(true);
