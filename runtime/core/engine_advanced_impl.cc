@@ -89,6 +89,28 @@
 namespace litert::lm {
 namespace {
 
+// Creates the vision executor and runs it once, so that the first image does
+// not pay the one-time costs of the first run. Returns nullptr on failure, in
+// which case the vision executor is created lazily with the first session.
+std::unique_ptr<VisionExecutor> CreateWarmedUpVisionExecutor(
+    const VisionExecutorSettings& settings, Environment& env) {
+  const absl::Time start = absl::Now();
+  auto vision_executor =
+      VisionLiteRtCompiledModelExecutor::Create(settings, env);
+  if (!vision_executor.ok()) {
+    ABSL_LOG(WARNING) << "Failed to create the vision executor at init: "
+                      << vision_executor.status();
+    return nullptr;
+  }
+  if (absl::Status status = (*vision_executor)->WarmUp(); !status.ok()) {
+    // The executor is still usable: only the first image pays for the warm-up.
+    ABSL_LOG(WARNING) << "Failed to warm up the vision executor: " << status;
+  }
+  ABSL_LOG(INFO) << "Vision executor created and warmed up in "
+                 << absl::Now() - start;
+  return *std::move(vision_executor);
+}
+
 // Compiles a LiteRt model from the given model type. Used for prefill/decode
 // models and MTP drafter models. If `weights_stream` is not null, the model's
 // external weights that are not in host memory are uploaded from it while the
@@ -620,6 +642,14 @@ absl::StatusOr<std::unique_ptr<Engine>> EngineAdvancedImpl::Create(
     ABSL_RETURN_IF_ERROR(benchmark_info->InitPhaseRecord(
         BenchmarkInfo::InitPhase::kTokenizer, tokenizer_duration));
   }
+  std::unique_ptr<VisionExecutor> vision_executor;
+  if (vision_executor_settings_ptr != nullptr &&
+      vision_executor_settings_ptr->GetWarmUpOnInit()) {
+    // The executor keeps a reference to the settings, which the resource
+    // manager owns below and which outlive it.
+    vision_executor = CreateWarmedUpVisionExecutor(
+        *vision_executor_settings_ptr, owned_env->env);
+  }
   std::unique_ptr<ExecutionManager> execution_manager;
   if (!engine_settings.GetSingleThreadedExecution()) {
     ABSL_ASSIGN_OR_RETURN(
@@ -628,7 +658,8 @@ absl::StatusOr<std::unique_ptr<Engine>> EngineAdvancedImpl::Create(
             tokenizer.get(), model_resources.get(), std::move(executor),
             std::move(vision_executor_settings_ptr),
             std::move(audio_executor_settings_ptr), &owned_env->env,
-            /*audio_executor=*/nullptr, runtime_debugger));
+            /*audio_executor=*/nullptr, runtime_debugger,
+            std::move(vision_executor)));
   } else {
     ABSL_ASSIGN_OR_RETURN(
         execution_manager,
@@ -636,7 +667,8 @@ absl::StatusOr<std::unique_ptr<Engine>> EngineAdvancedImpl::Create(
             tokenizer.get(), model_resources.get(), std::move(executor),
             std::move(vision_executor_settings_ptr),
             std::move(audio_executor_settings_ptr), &owned_env->env,
-            /*audio_executor=*/nullptr, runtime_debugger));
+            /*audio_executor=*/nullptr, runtime_debugger,
+            std::move(vision_executor)));
   }
 
   if (benchmark_info.has_value()) {

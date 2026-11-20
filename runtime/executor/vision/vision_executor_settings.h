@@ -144,6 +144,15 @@ class VisionExecutorSettings : public ExecutorSettingsBase {
     adapter_selected_signatures_ = std::move(adapter_selected_signatures);
   }
 
+  // Whether the engine creates the vision executor and runs it once when it is
+  // created, instead of when the first image is processed. This moves the
+  // one-time cost of the first run (e.g. the NPU model import) to the engine
+  // creation, and costs time and memory if no image is processed.
+  bool GetWarmUpOnInit() const { return warm_up_on_init_; }
+  void SetWarmUpOnInit(bool warm_up_on_init) {
+    warm_up_on_init_ = warm_up_on_init;
+  }
+
  private:
   explicit VisionExecutorSettings(const ModelAssets& model_assets)
       : ExecutorSettingsBase(model_assets) {}
@@ -159,6 +168,8 @@ class VisionExecutorSettings : public ExecutorSettingsBase {
 
   std::vector<std::string> encoder_selected_signatures_;
   std::vector<std::string> adapter_selected_signatures_;
+
+  bool warm_up_on_init_ = false;
 };
 
 std::ostream& operator<<(std::ostream& os,
