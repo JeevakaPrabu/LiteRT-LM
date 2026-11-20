@@ -21,6 +21,7 @@
 
 #include "absl/status/statusor.h"  // from @com_google_absl
 #include "absl/strings/string_view.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "runtime/engine/engine.h"
 #include "runtime/engine/engine_settings.h"
 #include "runtime/engine/io_types.h"
@@ -33,11 +34,14 @@ namespace litert::lm {
 absl::StatusOr<std::string> MaybeGetBosString(
     const SessionConfig& session_config, support::Tokenizer& tokenizer);
 
-// The util function to convert the string to processed input text.
+// The util function to convert the string to processed input text. The token
+// ids tensor is created in `env` if it is not null, and in LiteRT's deprecated
+// default environment otherwise.
 absl::StatusOr<InputText> StringToProcessedInputText(
     absl::string_view text, const SessionConfig& session_config,
     support::Tokenizer& tokenizer,
-    const std::optional<BenchmarkInfo>& benchmark_info);
+    const std::optional<BenchmarkInfo>& benchmark_info,
+    const ::litert::Environment* env = nullptr);
 
 // Util function for applying the prompt templates.
 // contents: The input contents to apply the prompt templates.
@@ -58,11 +62,13 @@ absl::StatusOr<std::vector<InputData>> ApplyPromptTemplates(
 
 // Preprocesses the input contents. This function is used for pre-processing
 // the input contents before sending them to the LLM executor.
-// Text input will be preprocessed by the tokenizer.
+// Text input will be preprocessed by the tokenizer, into tensors created in
+// `env` as for StringToProcessedInputText().
 absl::StatusOr<std::vector<InputData>> PreprocessContents(
     const std::vector<InputData>& contents, const SessionConfig& session_config,
     support::Tokenizer& tokenizer,
-    const std::optional<BenchmarkInfo>& benchmark_info);
+    const std::optional<BenchmarkInfo>& benchmark_info,
+    const ::litert::Environment* env = nullptr);
 
 // Calculates the number of tokens that the input contents will consume in the
 // model, accounting for text tokenization and multimodal (vision and audio)

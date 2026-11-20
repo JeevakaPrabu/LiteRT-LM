@@ -149,7 +149,8 @@ SessionAdvanced::RunPrefillAsync(
     ABSL_ASSIGN_OR_RETURN(
         preprocessed_contents,
         PreprocessContents(contents, session_info_->session_config, *tokenizer_,
-                           session_info_->benchmark_info));
+                           session_info_->benchmark_info,
+                           GetEnvironment().value_or(nullptr)));
   } else {
     bool is_first_turn = session_state_ == SessionState::kFresh;
     ContentType content_type;
@@ -167,7 +168,8 @@ SessionAdvanced::RunPrefillAsync(
     ABSL_ASSIGN_OR_RETURN(
         preprocessed_contents,
         PreprocessContents(templated_contents, session_info_->session_config,
-                           *tokenizer_, session_info_->benchmark_info));
+                           *tokenizer_, session_info_->benchmark_info,
+                           GetEnvironment().value_or(nullptr)));
   }
   ABSL_ASSIGN_OR_RETURN(auto task_id, execution_manager_lock->GetNewTaskId());
   ABSL_RETURN_IF_ERROR(execution_manager_lock->AddPrefillTask(
@@ -317,7 +319,8 @@ absl::StatusOr<std::unique_ptr<TaskController>> SessionAdvanced::RunDecodeAsync(
       ABSL_ASSIGN_OR_RETURN(
           std::vector<InputData> preprocessed_contents,
           PreprocessContents(templated_contents, session_info_->session_config,
-                             *tokenizer_, session_info_->benchmark_info));
+                             *tokenizer_, session_info_->benchmark_info,
+                             GetEnvironment().value_or(nullptr)));
       auto noop_callback = [](absl::StatusOr<Responses> responses) {};
       ABSL_ASSIGN_OR_RETURN(auto task_id,
                             execution_manager_lock->GetNewTaskId());

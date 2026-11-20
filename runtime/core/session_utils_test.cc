@@ -33,6 +33,7 @@
 #include "absl/strings/string_view.h"  // from @com_google_absl
 #include "absl/time/time.h"  // from @com_google_absl
 #include "absl/types/span.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "litert/cc/litert_tensor_buffer.h"  // from @litert
 #include "litert/test/matchers.h"  // from @litert
 #include "runtime/engine/engine.h"
@@ -475,6 +476,26 @@ TEST_F(SessionUtilsTest, ApplyPromptTemplatesWithSingleImageInput) {
   EXPECT_THAT(std::get<InputText>(templated_image[1]).GetRawTextString(),
               testing::status::IsOkAndHolds("<test>User\n"));
   EXPECT_TRUE(std::holds_alternative<InputImage>(templated_image[2]));
+}
+
+TEST_F(SessionUtilsTest, PreprocessContentsInEnvironment) {
+  LITERT_ASSERT_OK_AND_ASSIGN(auto env, ::litert::Environment::Create({}));
+  SessionConfig session_config = SessionConfig::CreateDefault();
+  session_config.SetStartTokenId(2);
+  std::vector<InputData> contents;
+  contents.emplace_back(InputText("</s>Hello World!"));
+  std::optional<BenchmarkInfo> benchmark_info;
+  ASSERT_OK_AND_ASSIGN(auto preprocessed_contents,
+                       PreprocessContents(contents, session_config, *tokenizer_,
+                                          benchmark_info, &env));
+  ASSERT_EQ(preprocessed_contents.size(), 1);
+  const auto& text_data = std::get<InputText>(preprocessed_contents[0]);
+  ASSERT_TRUE(text_data.IsTensorBuffer());
+  ASSERT_OK_AND_ASSIGN(auto text_tensor, text_data.GetPreprocessedTextTensor());
+  LITERT_ASSERT_OK_AND_ASSIGN(auto token_ids_span,
+                              ReferTensorBufferAsSpan<int>(*text_tensor));
+  EXPECT_THAT(std::vector<int>(token_ids_span.begin(), token_ids_span.end()),
+              testing::ElementsAre(2, 90, 547, 58, 735, 210, 466, 2294));
 }
 
 TEST_F(SessionUtilsTest, PreprocessContents) {

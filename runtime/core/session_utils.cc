@@ -51,7 +51,8 @@ absl::StatusOr<std::string> MaybeGetBosString(
 absl::StatusOr<InputText> StringToProcessedInputText(
     absl::string_view text, const SessionConfig& session_config,
     support::Tokenizer& tokenizer,
-    const std::optional<BenchmarkInfo>& benchmark_info) {
+    const std::optional<BenchmarkInfo>& benchmark_info,
+    const ::litert::Environment* env) {
   auto bos_token_id = session_config.GetStartTokenId();
   std::string bos_string = "";
   if (bos_token_id >= 0) {
@@ -83,7 +84,8 @@ absl::StatusOr<InputText> StringToProcessedInputText(
     ABSL_RETURN_IF_ERROR(const_cast<BenchmarkInfo&>(*benchmark_info)
                              .TimeTextToTokenIdsEnd(ids.size()));
   }
-  ABSL_ASSIGN_OR_RETURN(auto ids_buffer, tokenizer.TokenIdsToTensorBuffer(ids));
+  ABSL_ASSIGN_OR_RETURN(auto ids_buffer,
+                        tokenizer.TokenIdsToTensorBuffer(ids, env));
   return InputText(std::move(ids_buffer));
 }
 
@@ -174,7 +176,8 @@ absl::StatusOr<std::vector<InputData>> ApplyPromptTemplates(
 absl::StatusOr<std::vector<InputData>> PreprocessContents(
     const std::vector<InputData>& contents, const SessionConfig& session_config,
     support::Tokenizer& tokenizer,
-    const std::optional<BenchmarkInfo>& benchmark_info) {
+    const std::optional<BenchmarkInfo>& benchmark_info,
+    const ::litert::Environment* env) {
   // When benchmarking multimodal inputs, ApplyPromptTemplates splits the turn
   // into multiple InputText chunks around the image/audio (e.g., BOS token,
   // user turn prefix, and the prompt + turn suffix). Pass `benchmark_info` only
@@ -215,7 +218,7 @@ absl::StatusOr<std::vector<InputData>> PreprocessContents(
             auto processed_input_text,
             StringToProcessedInputText(
                 templated_text, session_config, tokenizer,
-                i == last_text_index ? benchmark_info : std::nullopt));
+                i == last_text_index ? benchmark_info : std::nullopt, env));
         preprocessed_contents.emplace_back(std::move(processed_input_text));
       }
     } else if (const auto* input_image = std::get_if<InputImage>(&content)) {

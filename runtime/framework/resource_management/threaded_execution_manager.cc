@@ -860,8 +860,9 @@ ThreadedExecutionManager::ProcessAndCombineContents(
 
   last_prefill_token_id_ = combined_token_ids.back();
 
-  ABSL_ASSIGN_OR_RETURN(auto token_ids_buffer,
-                        tokenizer_->TokenIdsToTensorBuffer(combined_token_ids));
+  ABSL_ASSIGN_OR_RETURN(
+      auto token_ids_buffer,
+      tokenizer_->TokenIdsToTensorBuffer(combined_token_ids, litert_env_));
 
   ExecutorInputs inputs(ExecutorTextData(std::move(token_ids_buffer)),
                         std::move(combined_image_data),
