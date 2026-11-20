@@ -847,13 +847,15 @@ ThreadedExecutionManager::ProcessAndCombineContents(
 
   std::optional<ExecutorVisionData> combined_image_data = std::nullopt;
   if (!all_image_data.empty()) {
-    ABSL_ASSIGN_OR_RETURN(combined_image_data,
-                          CombineExecutorVisionData(all_image_data));
+    ABSL_ASSIGN_OR_RETURN(
+        combined_image_data,
+        CombineExecutorVisionData(all_image_data, litert_env_));
   }
   std::optional<ExecutorAudioData> combined_audio_data = std::nullopt;
   if (!all_audio_data.empty()) {
-    ABSL_ASSIGN_OR_RETURN(combined_audio_data,
-                          CombineExecutorAudioData(all_audio_data));
+    ABSL_ASSIGN_OR_RETURN(
+        combined_audio_data,
+        CombineExecutorAudioData(all_audio_data, litert_env_));
   }
 
   last_prefill_token_id_ = combined_token_ids.back();

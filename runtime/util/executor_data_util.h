@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/status/statusor.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "runtime/executor/llm_executor_io_types.h"
 
 namespace litert::lm {
@@ -45,8 +46,13 @@ namespace litert::lm {
 // The output ExecutorVisionData will have TensorBuffer with shape,
 // [batch_size, dim1, num_token_1 + num_token_2 + ... + num_token_n,
 // feature_dim].
+//
+// The combined tensor buffer is created in `env` if it is not null, and in
+// LiteRT's deprecated default environment otherwise. A single input is moved
+// as is.
 absl::StatusOr<ExecutorVisionData> CombineExecutorVisionData(
-    std::vector<ExecutorVisionData>& executor_data);
+    std::vector<ExecutorVisionData>& executor_data,
+    const ::litert::Environment* env = nullptr);
 
 // Util function for combining multiple ExecutorAudioData into a single
 // ExecutorAudioData, by concatenating the audio embeddings in a single tensor
@@ -60,8 +66,11 @@ absl::StatusOr<ExecutorVisionData> CombineExecutorVisionData(
 //  [batch_size, num_token_n, feature_dim].
 // The output ExecutorAudioData will have TensorBuffer with shape,
 // [batch_size, num_token_1 + num_token_2 + ... + num_token_n, feature_dim].
+//
+// The combined tensor buffer is created as for CombineExecutorVisionData().
 absl::StatusOr<ExecutorAudioData> CombineExecutorAudioData(
-    std::vector<ExecutorAudioData>& executor_data);
+    std::vector<ExecutorAudioData>& executor_data,
+    const ::litert::Environment* env = nullptr);
 
 }  // namespace litert::lm
 

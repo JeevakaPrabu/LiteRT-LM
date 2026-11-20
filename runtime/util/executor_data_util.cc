@@ -22,10 +22,12 @@
 #include "absl/status/status.h"  // from @com_google_absl
 #include "absl/status/status_macros.h"  // from @com_google_absl
 #include "absl/status/statusor.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "litert/cc/litert_layout.h"  // from @litert
 #include "litert/cc/litert_macros.h"  // from @litert
 #include "litert/cc/litert_ranked_tensor_type.h"  // from @litert
 #include "litert/cc/litert_tensor_buffer.h"  // from @litert
+#include "litert/cc/litert_tensor_buffer_types.h"  // from @litert
 #include "runtime/executor/llm_executor_io_types.h"
 #include "runtime/util/status_macros.h"  // IWYU pragma: keep
 #include "runtime/util/tensor_buffer_util.h"
@@ -54,7 +56,8 @@ absl::StatusOr<::litert::TensorBuffer*> GetMutableEmbeddingsPtr(
 }
 
 template <typename T>
-absl::StatusOr<T> CombineExecutorDataImpl(std::vector<T>& executor_data) {
+absl::StatusOr<T> CombineExecutorDataImpl(std::vector<T>& executor_data,
+                                          const ::litert::Environment* env) {
   if (executor_data.empty()) {
     return absl::InvalidArgumentError("Executor data is empty.");
   }
@@ -103,9 +106,14 @@ absl::StatusOr<T> CombineExecutorDataImpl(std::vector<T>& executor_data) {
   ::litert::RankedTensorType combined_tensor_type(
       first_tensor_type.ElementType(), std::move(combined_layout));
 
-  LITERT_ASSIGN_OR_RETURN(auto combined_tensor_buffer,
-                          TensorBuffer::CreateManagedHostMemory(
-                              combined_tensor_type, total_packed_size));
+  LITERT_ASSIGN_OR_RETURN(
+      auto combined_tensor_buffer,
+      env != nullptr
+          ? TensorBuffer::CreateManaged(
+                *env, ::litert::TensorBufferType::kHostMemory,
+                combined_tensor_type, total_packed_size)
+          : TensorBuffer::CreateManagedHostMemory(combined_tensor_type,
+                                                  total_packed_size));
   LITERT_ASSIGN_OR_RETURN(
       auto combined_embeddings_lock_and_addr,
       ::litert::TensorBufferScopedLock::Create(combined_tensor_buffer,
@@ -143,13 +151,15 @@ absl::StatusOr<T> CombineExecutorDataImpl(std::vector<T>& executor_data) {
 }  // namespace
 
 absl::StatusOr<ExecutorVisionData> CombineExecutorVisionData(
-    std::vector<ExecutorVisionData>& executor_data) {
-  return CombineExecutorDataImpl(executor_data);
+    std::vector<ExecutorVisionData>& executor_data,
+    const ::litert::Environment* env) {
+  return CombineExecutorDataImpl(executor_data, env);
 }
 
 absl::StatusOr<ExecutorAudioData> CombineExecutorAudioData(
-    std::vector<ExecutorAudioData>& executor_data) {
-  return CombineExecutorDataImpl(executor_data);
+    std::vector<ExecutorAudioData>& executor_data,
+    const ::litert::Environment* env) {
+  return CombineExecutorDataImpl(executor_data, env);
 }
 
 }  // namespace litert::lm

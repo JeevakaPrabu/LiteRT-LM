@@ -23,6 +23,7 @@
 #include "absl/status/status.h"  // from @com_google_absl
 #include "absl/types/span.h"  // from @com_google_absl
 #include "litert/cc/litert_element_type.h"  // from @litert
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "litert/cc/litert_layout.h"  // from @litert
 #include "litert/cc/litert_ranked_tensor_type.h"  // from @litert
 #include "litert/cc/litert_tensor_buffer.h"  // from @litert
@@ -89,6 +90,52 @@ TEST(ExecutorDataUtilTest, CombineExecutorVisionDataTest) {
   auto read_success = embeddings_ptr->Read<float>(absl::MakeSpan(read_data));
   ASSERT_TRUE(read_success);
   for (int i = 0; i < 36; ++i) {
+    EXPECT_EQ(read_data[i], static_cast<float>(i + 1));
+  }
+}
+
+TEST(ExecutorDataUtilTest, CombineExecutorVisionDataInEnvironmentTest) {
+  auto env = ::litert::Environment::Create({});
+  ASSERT_TRUE(env.HasValue());
+
+  struct alignas(::litert::kHostMemoryBufferAlignment) {
+    float d[12] = {1.0f, 2.0f, 3.0f,  4.0f,  5.0f,  6.0f,
+                   7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f};
+  } data1;
+  auto tensor1 = TensorBuffer::CreateFromHostMemory(
+      *env,
+      ::litert::RankedTensorType(ElementType::Float32,
+                                 Layout(Dimensions({1, 2, 2, 3}))),
+      data1.d, sizeof(data1.d));
+  ASSERT_TRUE(tensor1.HasValue());
+
+  struct alignas(::litert::kHostMemoryBufferAlignment) {
+    float d[6] = {13.0f, 14.0f, 15.0f, 16.0f, 17.0f, 18.0f};
+  } data2;
+  auto tensor2 = TensorBuffer::CreateFromHostMemory(
+      *env,
+      ::litert::RankedTensorType(ElementType::Float32,
+                                 Layout(Dimensions({1, 2, 1, 3}))),
+      data2.d, sizeof(data2.d));
+  ASSERT_TRUE(tensor2.HasValue());
+
+  std::vector<ExecutorVisionData> vision_data_list;
+  vision_data_list.emplace_back(std::move(*tensor1), std::nullopt);
+  vision_data_list.emplace_back(std::move(*tensor2), std::nullopt);
+
+  auto combined_vision_data =
+      CombineExecutorVisionData(vision_data_list, &env.Value());
+  ASSERT_OK(combined_vision_data);
+  auto embeddings_ptr = combined_vision_data->GetMutableEmbeddingsPtr();
+  ASSERT_OK(embeddings_ptr);
+
+  auto tensor_type = (*embeddings_ptr)->TensorType();
+  ASSERT_TRUE(tensor_type.HasValue());
+  EXPECT_EQ(tensor_type->Layout(), Layout(Dimensions({1, 2, 3, 3})));
+
+  float read_data[18];
+  ASSERT_TRUE((*embeddings_ptr)->Read<float>(absl::MakeSpan(read_data)));
+  for (int i = 0; i < 18; ++i) {
     EXPECT_EQ(read_data[i], static_cast<float>(i + 1));
   }
 }
