@@ -198,19 +198,15 @@ template <typename T>
         ::litert::Status::kErrorInvalidArgument,
         "Environment is required for non-host memory buffer.");
   }
-  ::litert::Expected<::litert::TensorBuffer> output_tensor_buffer;
-  if (env == nullptr) {
-    output_tensor_buffer = ::litert::TensorBuffer::CreateManagedHostMemory(
-        ::litert::RankedTensorType(ElementTypeFor<T>::kType,
-                                   ::litert::Layout(std::move(dimensions))),
-        data.size() * sizeof(T));
-  } else {
-    output_tensor_buffer = ::litert::TensorBuffer::CreateManaged(
-        *env, buffer_type,
-        ::litert::RankedTensorType(ElementTypeFor<T>::kType,
-                                   ::litert::Layout(std::move(dimensions))),
-        data.size() * sizeof(T));
-  }
+  const ::litert::RankedTensorType tensor_type(
+      ElementTypeFor<T>::kType, ::litert::Layout(std::move(dimensions)));
+  const size_t size = data.size() * sizeof(T);
+  // Not default-constructed: that would create LiteRT's default environment.
+  auto output_tensor_buffer =
+      env == nullptr
+          ? ::litert::TensorBuffer::CreateManagedHostMemory(tensor_type, size)
+          : ::litert::TensorBuffer::CreateManaged(*env, buffer_type,
+                                                  tensor_type, size);
   if (!output_tensor_buffer.HasValue()) {
     return output_tensor_buffer.Error();
   }
@@ -231,19 +227,16 @@ template <typename TargetType, typename SourceType>
         ::litert::Status::kErrorInvalidArgument,
         "Environment is required for non-host memory buffer.");
   }
-  ::litert::Expected<::litert::TensorBuffer> tensor_buffer;
-  if (env == nullptr) {
-    tensor_buffer = ::litert::TensorBuffer::CreateManagedHostMemory(
-        ::litert::RankedTensorType(ElementTypeFor<TargetType>::kType,
-                                   ::litert::Layout(std::move(dimensions))),
-        source.size() * sizeof(TargetType));
-  } else {
-    tensor_buffer = ::litert::TensorBuffer::CreateManaged(
-        *env, buffer_type,
-        ::litert::RankedTensorType(ElementTypeFor<TargetType>::kType,
-                                   ::litert::Layout(std::move(dimensions))),
-        source.size() * sizeof(TargetType));
-  }
+  const ::litert::RankedTensorType tensor_type(
+      ElementTypeFor<TargetType>::kType,
+      ::litert::Layout(std::move(dimensions)));
+  const size_t size = source.size() * sizeof(TargetType);
+  // Not default-constructed: that would create LiteRT's default environment.
+  auto tensor_buffer =
+      env == nullptr
+          ? ::litert::TensorBuffer::CreateManagedHostMemory(tensor_type, size)
+          : ::litert::TensorBuffer::CreateManaged(*env, buffer_type,
+                                                  tensor_type, size);
   if (!tensor_buffer.HasValue()) {
     return tensor_buffer.Error();
   }
