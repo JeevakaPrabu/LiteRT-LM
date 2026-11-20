@@ -238,7 +238,8 @@ absl::StatusOr<InputImage> SkiaImagePreprocessor::Preprocess(
 
   LITERT_ASSIGN_OR_RETURN(
       auto processed_tensor_buffer,
-      ::litert::TensorBuffer::CreateManagedHostMemory(
+      CreateHostMemoryTensorBuffer(
+          parameter,
           MakeRankedTensorType<float>(
               {batch_size, target_height, target_width, target_channels}),
           buffer_size));

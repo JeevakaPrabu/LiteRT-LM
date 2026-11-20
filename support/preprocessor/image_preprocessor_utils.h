@@ -22,10 +22,20 @@
 #include "absl/functional/function_ref.h"  // from @com_google_absl
 #include "absl/status/statusor.h"  // from @com_google_absl
 #include "absl/types/span.h"  // from @com_google_absl
+#include "litert/cc/litert_expected.h"  // from @litert
+#include "litert/cc/litert_ranked_tensor_type.h"  // from @litert
+#include "litert/cc/litert_tensor_buffer.h"  // from @litert
 #include "support/preprocessor/image_preprocessor.h"
 #include "support/util/io_types.h"
 
 namespace litert::support {
+
+// Creates a host memory tensor buffer for the output of an image preprocessor.
+// The buffer is created in the environment of `parameter` if it has one, and in
+// LiteRT's deprecated default environment otherwise.
+::litert::Expected<::litert::TensorBuffer> CreateHostMemoryTensorBuffer(
+    const ImagePreprocessParameter& parameter,
+    const ::litert::RankedTensorType& tensor_type, size_t buffer_size);
 
 // Returns the dimensions of the image after resizing it to preserve the
 // aspect ratio.

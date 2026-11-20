@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 #include "absl/status/status.h"  // from @com_google_absl
 #include "absl/status/statusor.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "litert/cc/litert_tensor_buffer.h"  // from @litert
 #include "support/preprocessor/image_preprocessor.h"
 #include "support/util/test_utils.h"  // NOLINT
@@ -255,6 +256,33 @@ TEST(ImagePreprocessorUtilsTest, PatchifyImageSuccess) {
   EXPECT_EQ(data[21], 21.0f);
   EXPECT_EQ(data[22], 22.0f);
   EXPECT_EQ(data[23], 23.0f);
+}
+
+TEST(ImagePreprocessorUtilsTest, PatchifyImageInEnvironment) {
+  auto env = ::litert::Environment::Create({});
+  ASSERT_TRUE(env.HasValue());
+
+  std::vector<float> image_data(48, 1.0f);
+  ImagePreprocessParameter parameter;
+  parameter.SetEnvironment(&env.Value());
+  parameter.SetTargetDimensions({1, 4, 4, 3});
+  parameter.SetPatchifyConfig({.patch_width = 2,
+                               .patch_height = 2,
+                               .max_num_patches = 4,
+                               .pooling_kernel_size = 1});
+
+  ASSERT_OK_AND_ASSIGN(auto preprocessed_image,
+                       PatchifyImage(image_data, parameter));
+  ASSERT_OK_AND_ASSIGN(auto tensor_map,
+                       preprocessed_image.GetPreprocessedImageTensorMap());
+  ASSERT_NE(tensor_map, nullptr);
+  ASSERT_TRUE(tensor_map->contains("images"));
+  ASSERT_TRUE(tensor_map->contains("positions_xy"));
+
+  auto images_lock = ::litert::TensorBufferScopedLock::Create(
+      tensor_map->at("images"), ::litert::TensorBuffer::LockMode::kRead);
+  ASSERT_TRUE(images_lock.HasValue());
+  EXPECT_EQ(reinterpret_cast<const float*>(images_lock->second)[0], 1.0f);
 }
 
 TEST(ImagePreprocessorUtilsTest, PatchifyImageMissingConfig) {

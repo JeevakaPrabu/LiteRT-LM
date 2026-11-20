@@ -25,6 +25,7 @@
 #include "absl/status/status_macros.h"  // from @com_google_absl
 #include "absl/status/statusor.h"  // from @com_google_absl
 #include "absl/strings/string_view.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "litert/cc/litert_layout.h"  // from @litert
 #include "litert/cc/litert_macros.h"  // from @litert
 #include "support/util/io_types.h"
@@ -96,11 +97,24 @@ class ImagePreprocessParameter {
   // fully preprocess the image.
   void SetDryRun(bool dry_run) { dry_run_ = dry_run; }
 
+  // Returns the LiteRT environment in which the output tensor buffers are
+  // created, or nullptr. See SetEnvironment().
+  const ::litert::Environment* GetEnvironment() const { return environment_; }
+
+  // Sets the LiteRT environment in which the output tensor buffers are created.
+  // It must outlive the preprocessed images. If it is not set, the buffers are
+  // created in LiteRT's deprecated default environment, which is created on
+  // first use and registers every accelerator of the process.
+  void SetEnvironment(const ::litert::Environment* environment) {
+    environment_ = environment;
+  }
+
  private:
   Dimensions dimensions_;
   std::optional<PatchifyConfig> patchify_config_;
   std::optional<NormalizationConfig> normalization_config_;
   bool dry_run_ = false;
+  const ::litert::Environment* environment_ = nullptr;
 };
 
 // A decoded image in 8-bit RGB, HWC (row-major, 3 interleaved channels)

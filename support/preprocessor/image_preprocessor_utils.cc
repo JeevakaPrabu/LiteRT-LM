@@ -29,14 +29,29 @@
 #include "absl/status/statusor.h"  // from @com_google_absl
 #include "absl/strings/str_cat.h"  // from @com_google_absl
 #include "absl/types/span.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
+#include "litert/cc/litert_expected.h"  // from @litert
 #include "litert/cc/litert_layout.h"  // from @litert
 #include "litert/cc/litert_macros.h"  // from @litert
 #include "litert/cc/litert_ranked_tensor_type.h"  // from @litert
 #include "litert/cc/litert_tensor_buffer.h"  // from @litert
+#include "litert/cc/litert_tensor_buffer_types.h"  // from @litert
 #include "support/preprocessor/image_preprocessor.h"
 #include "support/util/io_types.h"
 
 namespace litert::support {
+
+::litert::Expected<::litert::TensorBuffer> CreateHostMemoryTensorBuffer(
+    const ImagePreprocessParameter& parameter,
+    const ::litert::RankedTensorType& tensor_type, size_t buffer_size) {
+  if (const ::litert::Environment* env = parameter.GetEnvironment()) {
+    return ::litert::TensorBuffer::CreateManaged(
+        *env, ::litert::TensorBufferType::kHostMemory, tensor_type,
+        buffer_size);
+  }
+  return ::litert::TensorBuffer::CreateManagedHostMemory(tensor_type,
+                                                         buffer_size);
+}
 
 absl::StatusOr<std::pair<int, int>> GetAspectRatioPreservingSize(
     int width, int height,
@@ -215,7 +230,8 @@ absl::StatusOr<InputImage> PatchifyImageImpl(
 
   LITERT_ASSIGN_OR_RETURN(
       auto patches_buffer,
-      ::litert::TensorBuffer::CreateManagedHostMemory(
+      CreateHostMemoryTensorBuffer(
+          parameter,
           MakeRankedTensorType<float>(
               {batch_size, num_model_patches, model_patch_dim}),
           batch_size * num_model_patches * model_patch_dim * sizeof(float)));
@@ -257,7 +273,8 @@ absl::StatusOr<InputImage> PatchifyImageImpl(
   if (patchify_config->emit_positions) {
     LITERT_ASSIGN_OR_RETURN(
         auto positions_buffer,
-        ::litert::TensorBuffer::CreateManagedHostMemory(
+        CreateHostMemoryTensorBuffer(
+            parameter,
             MakeRankedTensorType<int32_t>({batch_size, num_model_patches, 2}),
             batch_size * num_model_patches * 2 * sizeof(int32_t)));
     {
@@ -301,8 +318,8 @@ absl::StatusOr<InputImage> CreatePatchPositionsImage(
   absl::flat_hash_map<std::string, TensorBuffer> tensor_map;
   LITERT_ASSIGN_OR_RETURN(
       auto positions_buffer,
-      ::litert::TensorBuffer::CreateManagedHostMemory(
-          MakeRankedTensorType<int32_t>({1, num_patches, 2}),
+      CreateHostMemoryTensorBuffer(
+          parameter, MakeRankedTensorType<int32_t>({1, num_patches, 2}),
           num_patches * 2 * sizeof(int32_t)));
   tensor_map.insert_or_assign("positions_xy", std::move(positions_buffer));
   return InputImage(std::move(tensor_map));
