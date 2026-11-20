@@ -208,6 +208,7 @@ cc_library(
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings:string_view",
+        "@litert//litert/cc:litert_environment",
         "@nlohmann_json//:json",
         "//runtime/components/constrained_decoding:constraint",
         "//runtime/components/constrained_decoding:tool_choice",

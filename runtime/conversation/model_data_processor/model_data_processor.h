@@ -30,6 +30,7 @@
 #include "absl/status/status.h"  // from @com_google_absl
 #include "absl/status/statusor.h"  // from @com_google_absl
 #include "absl/strings/string_view.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "nlohmann/json.hpp"  // from @nlohmann_json
 #include "runtime/components/constrained_decoding/constraint.h"
 #include "runtime/components/constrained_decoding/tool_choice.h"
@@ -150,8 +151,19 @@ class ModelDataProcessor {
     return return_error_on_parse_failure_;
   }
 
+  // Sets the LiteRT environment in which media preprocessing creates its
+  // tensors. It must outlive the processor. Without one, they are created in
+  // LiteRT's deprecated default environment.
+  void SetEnvironment(const ::litert::Environment* environment) {
+    environment_ = environment;
+  }
+
+  // Returns the environment set with SetEnvironment(), or nullptr.
+  const ::litert::Environment* GetEnvironment() const { return environment_; }
+
  private:
   bool return_error_on_parse_failure_ = true;
+  const ::litert::Environment* environment_ = nullptr;
 };
 
 // TypeSafeModelDataProcessor is a ModelDataProcessor that expects a specific

@@ -84,6 +84,7 @@ absl::StatusOr<std::vector<InputData>> Lfm2DataProcessor::ToInputDataVectorImpl(
   };
   using ImageParam = ::litert::support::ImagePreprocessParameter;
   ImageParam image_params;
+  image_params.SetEnvironment(GetEnvironment());
   image_params.SetPatchifyConfig(ImageParam::PatchifyConfig{
       .patch_width = config_.patch_width,
       .patch_height = config_.patch_height,

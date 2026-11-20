@@ -251,6 +251,7 @@ Gemma3DataProcessor::ToInputDataVectorImpl(
       .add_audio_end = true,
   };
   ImagePreprocessParameter image_preprocess_parameter;
+  image_preprocess_parameter.SetEnvironment(GetEnvironment());
   image_preprocess_parameter.SetTargetDimensions(Dimensions(
       {1, config_.image_tensor_height, config_.image_tensor_width, 3}));
   return ProcessMultimodalPrompt(

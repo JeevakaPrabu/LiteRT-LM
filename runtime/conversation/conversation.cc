@@ -166,6 +166,17 @@ absl::Status ValidateVisualTokenBudgetForEngine(
   return absl::OkStatus();
 }
 
+// Lets the media preprocessing of `processor` create its tensors in the
+// environment of `engine`, if it has one, instead of LiteRT's default one.
+void SetProcessorEnvironment(const Engine& engine,
+                             ModelDataProcessor& processor) {
+  if (absl::StatusOr<const ::litert::Environment*> env =
+          engine.GetEnvironment();
+      env.ok()) {
+    processor.SetEnvironment(*env);
+  }
+}
+
 // Lightweight C++ fallback for rendering turn-based prompts when the Minijinja
 // template engine is disabled (e.g., in `:conversation_lite`).
 std::string ApplyFallbackPromptTemplate(const PromptTemplateInput& input,
@@ -613,6 +624,7 @@ absl::StatusOr<std::unique_ptr<Conversation>> Conversation::Create(
                                &engine.GetTokenizer(),
                                session->GetSessionConfig().GetStopTokenIds(),
                                config.constrained_decoding_enabled()));
+  SetProcessorEnvironment(engine, *model_data_processor);
   std::unique_ptr<ConstraintProvider> constraint_provider;
   if (config.constraint_provider_config().has_value()) {
     ABSL_ASSIGN_OR_RETURN(
@@ -1167,6 +1179,7 @@ absl::StatusOr<std::unique_ptr<Conversation>> Conversation::Clone() {
   if (!status.ok() && !absl::IsUnimplemented(status)) {
     return status;
   }
+  SetProcessorEnvironment(engine_, *model_data_processor);
   std::unique_ptr<ConstraintProvider> constraint_provider;
   if (config_.constraint_provider_config().has_value()) {
     ABSL_ASSIGN_OR_RETURN(constraint_provider,

@@ -28,6 +28,7 @@
 #include "absl/status/statusor.h"  // from @com_google_absl
 #include "absl/strings/string_view.h"  // from @com_google_absl
 #include "absl/types/span.h"  // from @com_google_absl
+#include "litert/cc/litert_environment.h"  // from @litert
 #include "nlohmann/json.hpp"  // from @nlohmann_json
 #include "runtime/components/constrained_decoding/tool_choice.h"
 #include "runtime/components/prompt_template.h"
@@ -194,6 +195,34 @@ TEST_P(Gemma4DataProcessorImageTest, ToInputDataVectorTextAndImage) {
                 ElementsAre(HasInputText(&expected_text1), HasInputImage(2700),
                             HasInputImageEnd(), HasInputText(&expected_text2)));
   }
+}
+
+TEST_P(Gemma4DataProcessorImageTest,
+       ToInputDataVectorTextAndImageInEnvironment) {
+  auto env = ::litert::Environment::Create({});
+  ASSERT_TRUE(env.HasValue());
+  ASSERT_OK_AND_ASSIGN(auto processor, Gemma4DataProcessor::Create(
+                                           /*Gemma4DataProcessorConfig=*/
+                                           {.max_num_patches = 2520}));
+  processor->SetEnvironment(&env.Value());
+  EXPECT_EQ(processor->GetEnvironment(), &env.Value());
+
+  const nlohmann::ordered_json message = {
+      {"role", "user"},
+      {"content",
+       {{{"type", "text"}, {"text", "Here is an image of apples "}},
+        {{"type", "image"}, {"path", GetImageTestdataPath(GetParam())}}}}};
+  ASSERT_OK_AND_ASSIGN(
+      const std::vector<InputData> input_data,
+      processor->ToInputDataVector(
+          "<|turn>user\nHere is an image of apples <|image|><turn|>",
+          json::array({message}), {}));
+
+  InputText expected_text1("<|turn>user\nHere is an image of apples <|image>");
+  InputText expected_text2("<turn|>");
+  EXPECT_THAT(input_data,
+              ElementsAre(HasInputText(&expected_text1), HasInputImage(2520),
+                          HasInputImageEnd(), HasInputText(&expected_text2)));
 }
 
 // Returns the dimensions of the "positions_xy" tensor of the image in

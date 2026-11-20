@@ -139,11 +139,13 @@ GenericDataProcessor::ToInputDataVectorImpl(
     return input_data;
   }
 
+  ImagePreprocessParameter image_params =
+      config_.multimodal->image_preprocess_parameter;
+  image_params.SetEnvironment(GetEnvironment());
   return ProcessMultimodalPrompt(
       rendered_template_prompt, messages, image_preprocessor_.get(),
       audio_preprocessor_.get(), config_.multimodal->processing_config,
-      config_.multimodal->image_preprocess_parameter, args.visual_token_budget,
-      args.dry_run);
+      image_params, args.visual_token_budget, args.dry_run);
 }
 
 absl::StatusOr<Message> GenericDataProcessor::ToMessageImpl(

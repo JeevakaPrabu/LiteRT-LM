@@ -236,6 +236,7 @@ Gemma4DataProcessor::ToInputDataVectorImpl(
       .add_audio_end = true,
   };
   ImagePreprocessParameter image_preprocess_parameter;
+  image_preprocess_parameter.SetEnvironment(GetEnvironment());
   image_preprocess_parameter.SetPatchifyConfig(
       ImagePreprocessParameter::PatchifyConfig{
           .patch_width = config_.patch_width,
