@@ -612,6 +612,56 @@ VisionLiteRtCompiledModelExecutor::GetSupportedVariants() const {
       vision_executor_settings_.GetEncoderSelectedSignatures());
 }
 
+absl::Status VisionLiteRtCompiledModelExecutor::WarmUp() {
+  // The signature that an image of the maximum size selects.
+  int num_patches = 0;
+  if (vision_encoder_->GetModel().GetNumSignatures() > 1) {
+    ABSL_ASSIGN_OR_RETURN(std::vector<VisionEncoderVariant> variants,
+                          GetSupportedVariants());
+    if (variants.empty()) {
+      return absl::OkStatus();
+    }
+    num_patches = variants.back().max_num_patches;
+  }
+
+  ABSL_ASSIGN_OR_RETURN(
+      const int encoder_signature_index,
+      GetVitSignatureIndex(
+          vision_encoder_->GetModel(), vision_executor_properties_,
+          num_patches,
+          vision_executor_settings_.GetEncoderSelectedSignatures()));
+  LITERT_ASSIGN_OR_RETURN(
+      auto& encoder_inputs,
+      vision_encoder_->GetOrCreateInputBuffers(encoder_signature_index));
+  LITERT_ASSIGN_OR_RETURN(
+      auto& encoder_outputs,
+      vision_encoder_->GetOrCreateOutputBuffers(encoder_signature_index));
+  ABSL_RETURN_IF_ERROR(RunCompiledModel(
+      vision_encoder_->GetCompiledModel(), encoder_signature_index,
+      encoder_inputs, encoder_outputs, kVisionEncoderInferenceLatency,
+      /*latch=*/nullptr));
+
+  if (vision_adapter_ == nullptr) {
+    return absl::OkStatus();
+  }
+  ABSL_ASSIGN_OR_RETURN(
+      const int adapter_signature_index,
+      GetVitSignatureIndex(
+          vision_adapter_->GetModel(), vision_executor_properties_,
+          num_patches,
+          vision_executor_settings_.GetAdapterSelectedSignatures()));
+  LITERT_ASSIGN_OR_RETURN(
+      auto& adapter_inputs,
+      vision_adapter_->GetOrCreateInputBuffers(adapter_signature_index));
+  LITERT_ASSIGN_OR_RETURN(
+      auto& adapter_outputs,
+      vision_adapter_->GetOrCreateOutputBuffers(adapter_signature_index));
+  return RunCompiledModel(vision_adapter_->GetCompiledModel(),
+                          adapter_signature_index, adapter_inputs,
+                          adapter_outputs, kVisionAdapterInferenceLatency,
+                          /*latch=*/nullptr);
+}
+
 absl::Status VisionLiteRtCompiledModelExecutor::RunCompiledModel(
     const CompiledModel& compiled_model, size_t signature_index,
     absl::Span<const litert::TensorBuffer> input_buffers,

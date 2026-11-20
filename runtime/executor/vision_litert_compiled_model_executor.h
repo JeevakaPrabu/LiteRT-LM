@@ -155,6 +155,15 @@ class VisionLiteRtCompiledModelExecutor : public VisionExecutor {
   absl::StatusOr<std::vector<VisionEncoderVariant>> GetSupportedVariants()
       const;
 
+  // Runs the vision encoder and adapter once on zero inputs, so that the
+  // one-time costs of the first run (e.g. the deferred NPU model import) are
+  // not paid by the first Encode(). For a multi-signature encoder, only the
+  // signature with the most soft tokens is warmed up. The outputs are
+  // discarded.
+  //
+  // Not thread-safe: call it before the executor is shared.
+  absl::Status WarmUp();
+
   // Same as the Encode overloads above, but can be cancelled while they run.
   //
   // `should_cancel` is checked before any input is copied, before the vision

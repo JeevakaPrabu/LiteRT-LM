@@ -231,6 +231,40 @@ TEST(VisionLiteRtCompiledModelExecutorTest, GetSupportedVariants) {
   EXPECT_EQ(variants[0].num_soft_tokens, 5);
 }
 
+class WarmUpTest : public ::testing::TestWithParam<absl::string_view> {};
+
+TEST_P(WarmUpTest, EncodeStillWorksAfterWarmUp) {
+  const std::string model_path = (std::filesystem::path(::testing::SrcDir()) /
+                                  std::string(GetParam()))
+                                     .string();
+  ASSERT_OK_AND_ASSIGN(ModelAssets model_assets,
+                       ModelAssets::Create(model_path));
+  ASSERT_OK_AND_ASSIGN(
+      VisionExecutorSettings settings,
+      VisionExecutorSettings::CreateDefault(model_assets,
+                                            /*encoder_backend=*/Backend::CPU,
+                                            /*adapter_backend=*/Backend::CPU));
+  LITERT_ASSERT_OK_AND_ASSIGN(
+      Environment env, Environment::Create(std::vector<Environment::Option>()));
+  ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<VisionLiteRtCompiledModelExecutor> vision_executor,
+      VisionLiteRtCompiledModelExecutor::Create(settings, env));
+
+  EXPECT_OK(vision_executor->WarmUp());
+
+  std::vector<float> input_data(10 * 8, 1.0f);
+  RankedTensorType input_tensor_type(ElementType::Float32,
+                                     Layout(litert::Dimensions{1, 10, 8}));
+  ASSERT_OK_AND_ASSIGN(
+      auto input_buffer,
+      CreateTensorBuffer<float>(absl::MakeSpan(input_data), input_tensor_type));
+  EXPECT_OK(vision_executor->Encode(input_buffer));
+}
+
+INSTANTIATE_TEST_SUITE_P(WithAndWithoutAdapter, WarmUpTest,
+                         ::testing::Values(kTestVisionModelWithAdapterPath,
+                                           kTestVisionModelWithoutAdapterPath));
+
 // Builds a vision encoder model with one signature per entry of
 // `signature_keys`. Signature i maps an input named `image_input_names[i]` of
 // [1, num_tokens[i] * 4, 3] (patches), or `image_dims` if set, to a `features`
