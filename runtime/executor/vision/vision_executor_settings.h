@@ -144,10 +144,20 @@ class VisionExecutorSettings : public ExecutorSettingsBase {
     adapter_selected_signatures_ = std::move(adapter_selected_signatures);
   }
 
-  // Whether the engine creates the vision executor and runs it once when it is
-  // created, instead of when the first image is processed. This moves the
-  // one-time cost of the first run (e.g. the NPU model import) to the engine
-  // creation, and costs time and memory if no image is processed.
+  // Whether the engine creates the vision executor when it is created, in
+  // parallel with the LLM executor, instead of when the first image is
+  // processed. The NPU model import is only deferred, so on its own this moves
+  // little unless the dispatch imports in the background (e.g. the OpenVINO
+  // option LITERT_OV_EAGER_IMPORT=YES). It costs time and memory if no image is
+  // processed.
+  bool GetCreateOnInit() const { return create_on_init_; }
+  void SetCreateOnInit(bool create_on_init) {
+    create_on_init_ = create_on_init;
+  }
+
+  // Whether the engine also runs the vision executor once when it creates it,
+  // which moves the one-time cost of the first run (e.g. the NPU model import)
+  // to the engine creation. Implies GetCreateOnInit().
   bool GetWarmUpOnInit() const { return warm_up_on_init_; }
   void SetWarmUpOnInit(bool warm_up_on_init) {
     warm_up_on_init_ = warm_up_on_init;
@@ -169,6 +179,7 @@ class VisionExecutorSettings : public ExecutorSettingsBase {
   std::vector<std::string> encoder_selected_signatures_;
   std::vector<std::string> adapter_selected_signatures_;
 
+  bool create_on_init_ = false;
   bool warm_up_on_init_ = false;
 };
 

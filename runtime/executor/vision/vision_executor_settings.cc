@@ -70,6 +70,7 @@ std::ostream& operator<<(std::ostream& os,
   os << "  EncoderBackend: " << settings.GetEncoderBackend() << std::endl;
   os << "  AdapterBackend: " << settings.GetAdapterBackend() << std::endl;
   os << "  NpuOptions: " << settings.GetNpuOptions() << std::endl;
+  os << "  CreateOnInit: " << settings.GetCreateOnInit() << std::endl;
   os << "  WarmUpOnInit: " << settings.GetWarmUpOnInit() << std::endl;
   return os;
 }

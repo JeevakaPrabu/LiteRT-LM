@@ -89,10 +89,11 @@
 namespace litert::lm {
 namespace {
 
-// Creates the vision executor and runs it once, so that the first image does
-// not pay the one-time costs of the first run. Returns nullptr on failure, in
-// which case the vision executor is created lazily with the first session.
-std::unique_ptr<VisionExecutor> CreateWarmedUpVisionExecutor(
+// Creates the vision executor, and runs it once if the settings ask for it, so
+// that the first image does not pay the one-time costs of the first run.
+// Returns nullptr on failure, in which case the vision executor is created
+// lazily with the first session.
+std::unique_ptr<VisionExecutor> PreloadVisionExecutor(
     const VisionExecutorSettings& settings, Environment& env) {
   const absl::Time start = absl::Now();
   auto vision_executor =
@@ -102,12 +103,13 @@ std::unique_ptr<VisionExecutor> CreateWarmedUpVisionExecutor(
                       << vision_executor.status();
     return nullptr;
   }
-  if (absl::Status status = (*vision_executor)->WarmUp(); !status.ok()) {
-    // The executor is still usable: only the first image pays for the warm-up.
-    ABSL_LOG(WARNING) << "Failed to warm up the vision executor: " << status;
+  if (settings.GetWarmUpOnInit()) {
+    if (absl::Status status = (*vision_executor)->WarmUp(); !status.ok()) {
+      // The executor is still usable: only the first image pays for it.
+      ABSL_LOG(WARNING) << "Failed to warm up the vision executor: " << status;
+    }
   }
-  ABSL_LOG(INFO) << "Vision executor created and warmed up in "
-                 << absl::Now() - start;
+  ABSL_LOG(INFO) << "Vision executor preloaded in " << absl::Now() - start;
   return *std::move(vision_executor);
 }
 
@@ -554,6 +556,28 @@ absl::StatusOr<std::unique_ptr<Engine>> EngineAdvancedImpl::Create(
     owned_env = std::make_unique<OwnedEnvironment>(std::move(temp_owned_env));
   }
 
+  std::unique_ptr<VisionExecutorSettings> vision_executor_settings_ptr;
+  if (engine_settings.GetVisionExecutorSettings().has_value()) {
+    vision_executor_settings_ptr = std::make_unique<VisionExecutorSettings>(
+        std::move(engine_settings.GetVisionExecutorSettings().value()));
+    if (vision_executor_settings_ptr->GetAdapterBackend() != Backend::CPU) {
+      ABSL_LOG(WARNING) << "Vision adapter backend is not CPU, which may cause "
+                           "precision loss.";
+    }
+  }
+
+  // Created while the LLM executor is, as both take hundreds of milliseconds.
+  // Declared after the settings and the environment, which it uses and which
+  // are destroyed after it, if this function returns early.
+  std::future<std::unique_ptr<VisionExecutor>> vision_executor_future;
+  if (vision_executor_settings_ptr != nullptr &&
+      (vision_executor_settings_ptr->GetCreateOnInit() ||
+       vision_executor_settings_ptr->GetWarmUpOnInit())) {
+    vision_executor_future = std::async(
+        std::launch::async, PreloadVisionExecutor,
+        std::cref(*vision_executor_settings_ptr), std::ref(owned_env->env));
+  }
+
   std::unique_ptr<LlmExecutor> executor;
   std::shared_ptr<RuntimeDebugger> runtime_debugger = nullptr;
   switch (main_executor_settings.GetBackend()) {
@@ -592,16 +616,6 @@ absl::StatusOr<std::unique_ptr<Engine>> EngineAdvancedImpl::Create(
         << "AI Edge Debugger is only supported on CPU and GPU LiteRT "
            "compiled-model executors; disabling debugger.";
     engine_settings.SetEnableDebugger(false);
-  }
-
-  std::unique_ptr<VisionExecutorSettings> vision_executor_settings_ptr;
-  if (engine_settings.GetVisionExecutorSettings().has_value()) {
-    vision_executor_settings_ptr = std::make_unique<VisionExecutorSettings>(
-        std::move(engine_settings.GetVisionExecutorSettings().value()));
-    if (vision_executor_settings_ptr->GetAdapterBackend() != Backend::CPU) {
-      ABSL_LOG(WARNING) << "Vision adapter backend is not CPU, which may cause "
-                           "precision loss.";
-    }
   }
 
   std::unique_ptr<AudioExecutorSettings> audio_executor_settings_ptr;
@@ -643,12 +657,8 @@ absl::StatusOr<std::unique_ptr<Engine>> EngineAdvancedImpl::Create(
         BenchmarkInfo::InitPhase::kTokenizer, tokenizer_duration));
   }
   std::unique_ptr<VisionExecutor> vision_executor;
-  if (vision_executor_settings_ptr != nullptr &&
-      vision_executor_settings_ptr->GetWarmUpOnInit()) {
-    // The executor keeps a reference to the settings, which the resource
-    // manager owns below and which outlive it.
-    vision_executor = CreateWarmedUpVisionExecutor(
-        *vision_executor_settings_ptr, owned_env->env);
+  if (vision_executor_future.valid()) {
+    vision_executor = vision_executor_future.get();
   }
   std::unique_ptr<ExecutionManager> execution_manager;
   if (!engine_settings.GetSingleThreadedExecution()) {

@@ -209,6 +209,18 @@ TEST(VisionExecutorSettingsTest, SelectedSignatures) {
               ElementsAre("adapter_128"));
 }
 
+TEST(VisionExecutorSettingsTest, GetAndSetCreateOnInit) {
+  ASSERT_OK_AND_ASSIGN(ModelAssets model_assets, ModelAssets::Create(""));
+  ASSERT_OK_AND_ASSIGN(VisionExecutorSettings settings,
+                       VisionExecutorSettings::CreateDefault(
+                           model_assets, Backend::NPU, Backend::CPU));
+  EXPECT_FALSE(settings.GetCreateOnInit());
+
+  settings.SetCreateOnInit(true);
+  EXPECT_TRUE(settings.GetCreateOnInit());
+  EXPECT_FALSE(settings.GetWarmUpOnInit());
+}
+
 TEST(VisionExecutorSettingsTest, GetAndSetWarmUpOnInit) {
   ASSERT_OK_AND_ASSIGN(ModelAssets model_assets, ModelAssets::Create(""));
   ASSERT_OK_AND_ASSIGN(VisionExecutorSettings settings,

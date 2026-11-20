@@ -463,6 +463,30 @@ TEST(EngineTest, CreateEngine_WarmUpVisionOnInitWithoutVisionModel) {
               testing::status::StatusIs(absl::StatusCode::kNotFound));
 }
 
+TEST(EngineTest, CreateEngine_CreateVisionOnInitWithoutVisionModel) {
+  auto task_path =
+      std::filesystem::path(::testing::SrcDir()) /
+      "litert_lm/runtime/testdata/test_lm_new_metadata.task";
+  auto model_assets = ModelAssets::Create(task_path.string());
+  ASSERT_OK(model_assets);
+  auto engine_settings = EngineSettings::CreateDefault(
+      *model_assets, /*backend=*/Backend::CPU, /*vision_backend=*/Backend::CPU,
+      /*audio_backend=*/std::nullopt);
+  ASSERT_OK(engine_settings);
+  engine_settings->GetMutableMainExecutorSettings().SetMaxNumTokens(
+      kMaxNumTokens);
+  engine_settings->GetMutableMainExecutorSettings().SetCacheDir(":nocache");
+  engine_settings->GetMutableVisionExecutorSettings()->SetCreateOnInit(true);
+
+  // The engine is still created, and the missing vision encoder is reported
+  // when a vision session is created, as without the setting.
+  ASSERT_OK_AND_ASSIGN(auto llm, CreateEngine(*engine_settings));
+  SessionConfig session_config = SessionConfig::CreateDefault();
+  session_config.SetVisionModalityEnabled(true);
+  EXPECT_THAT(llm->CreateSession(session_config),
+              testing::status::StatusIs(absl::StatusCode::kNotFound));
+}
+
 TEST(EngineTest, CreateEngine_FailsNoAudioModel) {
   auto task_path =
       std::filesystem::path(::testing::SrcDir()) /
